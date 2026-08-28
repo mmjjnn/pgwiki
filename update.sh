@@ -11,9 +11,8 @@
 
 shopt -s nullglob
 
-# these should be absolute paths
+# this should be an absolute path
 HTMLDIR=
-TMPDIR=
 
 # Given a git repo's HTTPS url, how do we get a URL to view or edit specific
 # files in a web interface? We chop off the .git extension, then append one of the
@@ -52,10 +51,11 @@ do
   dest="$HTMLDIR/$1/${page%.md}.html"
   if [ ! -f "$dest" ] || [ "$page" -nt "$dest" ]
   then
-    echo "----" > "$TMPDIR/footer.md"
-    echo "[View Markdown Source](${2%.git}/$GIT_WEB_VIEW/main/$page) --- [Edit in Browser](${2%.git}/$GIT_WEB_EDIT/main/$page)" >> "$TMPDIR/footer.md"
-    pandoc --standalone --mathjax -o "$dest" "$page" "$TMPDIR/footer.md"
-    rm "$TMPDIR/footer.md"
+    pandoc -f markdown --standalone --mathjax -o "$dest" "$page" <(cat <<EOF
+----
+[View Markdown Source](${2%.git}/$GIT_WEB_VIEW/main/$page) --- [Edit in Browser](${2%.git}/$GIT_WEB_EDIT/main/$page)
+EOF
+    )
   fi
 done
 
@@ -70,11 +70,11 @@ do
 done
 
 # Generate the index
-printf "%% Index\n\n" > "$TMPDIR/index.md"
-for page in "${!title[@]}"
-do
-  echo "* [${title[$page]}](${page%.md}.html)" >> "$TMPDIR/index.md"
-done
-printf "\n----\n[View Markdown sources](${2%.git}) --- [Add new page](${2%.git}/$GIT_WEB_NEW/main)\n" >> "$TMPDIR/index.md"
-pandoc --standalone -o "$HTMLDIR/$1/index.html" "$TMPDIR/index.md"
-rm "$TMPDIR/index.md"
+{
+  printf "%% Index\n\n"
+  for page in "${!title[@]}"
+  do
+    echo "* [${title[$page]}](${page%.md}.html)"
+  done
+  printf "\n----\n[View Markdown sources](${2%.git}) --- [Add new page](${2%.git}/$GIT_WEB_NEW/main)\n"
+} | pandoc -f markdown --standalone -o "$HTMLDIR/$1/index.html"
