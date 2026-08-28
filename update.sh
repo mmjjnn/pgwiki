@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Update a site to current Markdown sources
-# Mark Nelson, 2021
+# Mark Nelson, 2021, 2026
 
 # Arguments:
 #   $1: the subdirectory to put the site into
@@ -9,6 +9,7 @@
 # Note that we must be able to clone/pull from $2, either because it's public,
 # or because the user running the CGI script has appropriate credentials.
 
+set -euo pipefail
 shopt -s nullglob
 
 # this should be an absolute path
