@@ -15,17 +15,22 @@ shopt -s nullglob
 # this should be an absolute path
 HTMLDIR=
 
-# Given a git repo's HTTPS url, how do we get a URL to view or edit specific
-# files in a web interface? We chop off the .git extension, then append one of the
-# strings below, and then append main/filename.md (except for adding new files,
-# where we append just "main"). TODO: don't hardcode the name of the main
-# branch.
-# The below defaults work on GitHub. For GitLab, they should be "-/blob/", 
-# "-/edit/", and "-/new/". Other Git web interfaces may use other schemes,
+# Normalize Git URL (SSH or HTTPS) into an HTTPS web viewing URL
+WEB_URL="${2%.git}"
+if [[ "$WEB_URL" =~ ^git@([^:]+):(.*)$ ]]; then
+  WEB_URL="https://${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+fi
+
+# Given a git repo's web url, how do we get a URL to view or edit specific
+# files in a web interface? We append one of the strings below, and then
+# append /main/filename.md (except for adding new files, where we append just
+# "/main"). TODO: don't hardcode the name of the main branch.
+# The below defaults work on GitHub. For GitLab, they should be "-/blob", 
+# "-/edit", and "-/new". Other Git web interfaces may use other schemes,
 # or not support these operations.
-GIT_WEB_VIEW="blob/"
-GIT_WEB_EDIT="edit/"
-GIT_WEB_NEW="new/"
+GIT_WEB_VIEW="blob"
+GIT_WEB_EDIT="edit"
+GIT_WEB_NEW="new"
 
 # Clone or pull the repository
 if [ ! -d "$1" ]
@@ -54,7 +59,7 @@ do
   then
     pandoc -f markdown --standalone --mathjax -o "$dest" "$page" <(cat <<EOF
 ----
-[View Markdown Source](${2%.git}/$GIT_WEB_VIEW/main/$page) --- [Edit in Browser](${2%.git}/$GIT_WEB_EDIT/main/$page)
+[View Markdown Source](${WEB_URL}/$GIT_WEB_VIEW/main/$page) --- [Edit in Browser](${WEB_URL}/$GIT_WEB_EDIT/main/$page)
 EOF
     )
   fi
@@ -77,5 +82,6 @@ done
   do
     echo "* [${title[$page]}](${page%.md}.html)"
   done
-  printf "\n----\n[View Markdown sources](${2%.git}) --- [Add new page](${2%.git}/$GIT_WEB_NEW/main)\n"
+  printf "\n----\n[View Markdown sources](%s) --- [Add new page](%s/%s/main)\n" \
+    "${WEB_URL}" "${WEB_URL}" "$GIT_WEB_NEW"
 } | pandoc -f markdown --standalone -o "$HTMLDIR/$1/index.html"
