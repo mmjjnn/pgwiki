@@ -36,3 +36,4 @@ TODOs:
   Should add support for organizing pages into subdirectories.
 * Pandoc Markdown supports citations in a few different ways. Should pick one
   and set up a reasonable workflow for them.
+* The workflow for pulling from a private repo isn't in the public code yet.
