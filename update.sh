@@ -38,8 +38,8 @@ fi
 
 # Given a git repo's web url, how do we get a URL to view or edit specific
 # files in a web interface? We append one of the strings below, and then
-# append /main/filename.md (except for adding new files, where we append just
-# "/main"). TODO: don't hardcode the name of the main branch.
+# append /$BRANCH/filename.md (except for adding new files, where we append
+# just "/$BRANCH").
 # The below defaults work on GitHub. For GitLab, they should be "-/blob", 
 # "-/edit", and "-/new". Other Git web interfaces may use other schemes,
 # or not support these operations.
@@ -47,15 +47,24 @@ GIT_WEB_VIEW="blob"
 GIT_WEB_EDIT="edit"
 GIT_WEB_NEW="new"
 
-# Clone or pull the repository
+# Clone or sync the repository
 if [ ! -d "$1" ]
 then
   git clone -- "$2" "$1"
   cd "$1"
-  git config pull.rebase false # avoid noise in logs
 else
   cd "$1"
-  git pull -- "$2"
+  git remote set-url origin "$2"
+  git fetch --prune origin
+fi
+
+# Get branch name or default to "main"
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "main")
+
+# Reset to origin to avoid any possibility of merge conflicts
+# (This should be a pull-only clone.)
+if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+  git reset --hard "origin/$BRANCH"
 fi
 
 # (Re)generate any new or updated pages
@@ -72,7 +81,7 @@ do
   then
     pandoc -f markdown --standalone --mathjax -o "$dest" -- "$page" <(cat <<EOF
 ----
-[View Markdown Source](${WEB_URL}/$GIT_WEB_VIEW/main/$page) --- [Edit in Browser](${WEB_URL}/$GIT_WEB_EDIT/main/$page)
+[View Markdown Source](${WEB_URL}/$GIT_WEB_VIEW/$BRANCH/$page) --- [Edit in Browser](${WEB_URL}/$GIT_WEB_EDIT/$BRANCH/$page)
 EOF
     )
   fi
@@ -98,6 +107,6 @@ done
   do
     echo "* [${title[$page]}](${page%.md}.html)"
   done
-  printf "\n----\n[View Markdown sources](%s) --- [Add new page](%s/%s/main)\n" \
-    "${WEB_URL}" "${WEB_URL}" "$GIT_WEB_NEW"
+  printf "\n----\n[View Markdown sources](%s) --- [Add new page](%s/%s/%s)\n" \
+    "${WEB_URL}" "${WEB_URL}" "$GIT_WEB_NEW" "$BRANCH"
 } | pandoc -f markdown --standalone -o "$HTMLDIR/$1/index.html"
