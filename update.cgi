@@ -2,7 +2,7 @@
 
 # CGI script to update when Markdown source changes (to be called from a
 # post-commit hook).
-# Mark Nelson, 2021
+# Mark Nelson, 2021, 2026
 
 # SCRIPTDIR should be a directory that is not publicly served over HTTP, but
 # can be written to by the user running CGI scripts (often 'web').
@@ -16,14 +16,26 @@ wikis[example]="https://github.com/NelsonAU/example.git"
 
 echo "Content-type: text/plain"
 
-if [[ $QUERY_STRING =~ ^wiki=(.*)$ ]]
+if [ -z "$SCRIPTDIR" ] || [ ! -d "$SCRIPTDIR" ]; then
+  echo "Status: 500 Internal Server Error"
+  echo ""
+  echo "SCRIPTDIR undefined or does not exist."
+  exit 0
+fi
+
+if [[ ${QUERY_STRING:-} =~ (^|&)wiki=([a-zA-Z0-9_-]+)(&|$) ]]
 then
-  wiki=${BASH_REMATCH[1]}
-  if [ -v wikis[$wiki] ]
+  wiki="${BASH_REMATCH[2]}"
+  if [ -n "${wikis[$wiki]:-}" ]
   then
     echo ""
     echo "Updating $wiki from ${wikis[$wiki]}"
-    cd "$SCRIPTDIR"
+    if ! cd "$SCRIPTDIR"; then
+      echo "Status: 500 Internal Server Error"
+      echo ""
+      echo "Failed to change directory to SCRIPTDIR."
+      exit 0
+    fi
     ./update.sh "$wiki" "${wikis[$wiki]}"
   else
     echo "Status: 422 Invalid parameter"
@@ -33,6 +45,6 @@ then
 else
   echo "Status: 422 Invalid parameter"
   echo ""
-  echo "Missing or invalid query string: \"$QUERY_STRING\""
+  echo "Missing or invalid query string: \"${QUERY_STRING:-}\""
   echo "Expected: wiki=wikiname"
 fi

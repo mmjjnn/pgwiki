@@ -12,8 +12,23 @@
 set -euo pipefail
 shopt -s nullglob
 
+# Validate arguments
+if [ $# -lt 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
+  echo "Usage: $0 <wiki-subdir> <git-url>" >&2
+  exit 1
+fi
+if [[ "$1" =~ \.\. ]] || [[ "$1" =~ ^/ ]]; then
+  echo "Error: Invalid wiki directory name: $1" >&2
+  exit 1
+fi
+
 # this should be an absolute path
 HTMLDIR=
+
+if [ -z "$HTMLDIR" ]; then
+  echo "Error: HTMLDIR must be configured in update.sh" >&2
+  exit 1
+fi
 
 # Normalize Git URL (SSH or HTTPS) into an HTTPS web viewing URL
 WEB_URL="${2%.git}"
@@ -35,12 +50,12 @@ GIT_WEB_NEW="new"
 # Clone or pull the repository
 if [ ! -d "$1" ]
 then
-  git clone "$2" "$1"
+  git clone -- "$2" "$1"
   cd "$1"
   git config pull.rebase false # avoid noise in logs
 else
   cd "$1"
-  git pull "$2"
+  git pull -- "$2"
 fi
 
 # (Re)generate any new or updated pages
@@ -52,12 +67,12 @@ do
   # The AST splits strings into an array of objects, so we have to join them
   # back together. E.g. "Two words" looks like:
   #   [ { "t": "Str", "c": "Two" }, { "t": "Space" }, { "t": "Str", "c": "words" } ]
-  title["$page"]=$(pandoc -t json "$page" | jq -r '.meta.title.c | map(if .t=="Space" then " " else .c end) | join("")')
+  title["$page"]=$(pandoc -t json -- "$page" | jq -r '.meta.title.c | map(if .t=="Space" then " " else .c end) | join("")')
 
   dest="$HTMLDIR/$1/${page%.md}.html"
   if [ ! -f "$dest" ] || [ "$page" -nt "$dest" ]
   then
-    pandoc -f markdown --standalone --mathjax -o "$dest" "$page" <(cat <<EOF
+    pandoc -f markdown --standalone --mathjax -o "$dest" -- "$page" <(cat <<EOF
 ----
 [View Markdown Source](${WEB_URL}/$GIT_WEB_VIEW/main/$page) --- [Edit in Browser](${WEB_URL}/$GIT_WEB_EDIT/main/$page)
 EOF
@@ -66,12 +81,15 @@ EOF
 done
 
 # Delete any deleted pages
-for path in "$HTMLDIR/$1/"/*
+for path in "$HTMLDIR/$1"/*.html
 do
   file=${path##*/}
-  if [ ! -f "${file%.html}.md" ]
+  if [ "$file" = "index.html" ]; then
+    continue
+  fi
+  if [ -f "$path" ] && [ ! -f "${file%.html}.md" ]
   then
-    rm "$path"
+    rm -f -- "$path"
   fi
 done
 
