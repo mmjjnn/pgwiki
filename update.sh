@@ -39,6 +39,21 @@ if [ -z "${HTMLDIR:-}" ]; then
 fi
 HTMLDIR="${HTMLDIR%/}"
 
+# Find SSH deploy key for private repositories
+KEYDIR="${KEYDIR:-$SCRIPT_DIR}"
+KEYFILE="${KEYDIR}/key_${1}"
+KNOWN_HOSTS="${KEYDIR}/known_hosts"
+
+if [ -f "$KEYFILE" ]; then
+  ssh_opts=(-i "$KEYFILE")
+  if [ -f "$KNOWN_HOSTS" ]; then
+    ssh_opts+=(-o "UserKnownHostsFile=$KNOWN_HOSTS")
+  else
+    ssh_opts+=(-o "StrictHostKeyChecking=accept-new")
+  fi
+  export GIT_SSH_COMMAND="ssh ${ssh_opts[*]}"
+fi
+
 # Normalize Git URL (SSH or HTTPS) into an HTTPS web viewing URL
 WEB_URL="${2%.git}"
 if [[ "$WEB_URL" =~ ^git@([^:]+):(.*)$ ]]; then

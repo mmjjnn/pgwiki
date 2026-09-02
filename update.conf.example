@@ -3,3 +3,8 @@
 
 # Directory where generated HTML files will be served (required, absolute path)
 HTMLDIR="/path/to/public/html"
+
+# For private repos, directory where SSH deploy keys (named key_<wikiname>) and
+# known_hosts are located
+# (optional; defaults to the directory containing update.sh)
+# KEYDIR="/path/to/protected/wiki"

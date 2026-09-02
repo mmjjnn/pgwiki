@@ -1,5 +1,9 @@
 # Local deployment configuration
 update.conf
 
+# SSH deploy keys and known_hosts
+key_*
+known_hosts
+
 # OS metadata
 .DS_Store
