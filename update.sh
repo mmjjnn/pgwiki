@@ -29,6 +29,7 @@ if [ -z "$HTMLDIR" ]; then
   echo "Error: HTMLDIR must be configured in update.sh" >&2
   exit 1
 fi
+HTMLDIR="${HTMLDIR%/}"
 
 # Normalize Git URL (SSH or HTTPS) into an HTTPS web viewing URL
 WEB_URL="${2%.git}"
@@ -87,6 +88,17 @@ EOF
   fi
 done
 
+# Copy new or updated static assets (including in subdirectories)
+find . -name .git -prune -o -name ".*" ! -name . -prune -o -type f ! -name "*.md" ! -name "*.html" -print0 | while IFS= read -r -d '' file; do
+  relpath="${file#./}"
+  dest="$HTMLDIR/$1/$relpath"
+  dest_dir="${dest%/*}"
+  mkdir -p -- "$dest_dir"
+  if [ ! -f "$dest" ] || [ "$file" -nt "$dest" ]; then
+    cp -p -- "$file" "$dest"
+  fi
+done
+
 # Delete any deleted pages
 for path in "$HTMLDIR/$1"/*.html
 do
@@ -99,6 +111,17 @@ do
     rm -f -- "$path"
   fi
 done
+
+# Delete any deleted static assets and cleanup empty directories
+if [ -d "$HTMLDIR/$1" ]; then
+  find "$HTMLDIR/$1" -type f ! -name "*.html" -print0 | while IFS= read -r -d '' dest_file; do
+    relpath="${dest_file#$HTMLDIR/$1/}"
+    if [ ! -f "$relpath" ]; then
+      rm -f -- "$dest_file"
+    fi
+  done
+  find "$HTMLDIR/$1" -depth -type d ! -path "$HTMLDIR/$1" -exec rmdir {} + 2>/dev/null || true
+fi
 
 # Generate the index
 {
