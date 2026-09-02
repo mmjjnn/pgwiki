@@ -22,11 +22,19 @@ if [[ "$1" =~ \.\. ]] || [[ "$1" =~ ^/ ]]; then
   exit 1
 fi
 
-# this should be an absolute path
-HTMLDIR=
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONF_FILE="$SCRIPT_DIR/update.conf"
 
-if [ -z "$HTMLDIR" ]; then
-  echo "Error: HTMLDIR must be configured in update.sh" >&2
+if [ ! -f "$CONF_FILE" ]; then
+  echo "Error: Configuration file '$CONF_FILE' not found." >&2
+  exit 1
+fi
+
+# shellcheck source=/dev/null
+. "$CONF_FILE"
+
+if [ -z "${HTMLDIR:-}" ]; then
+  echo "Error: HTMLDIR must be configured in update.conf" >&2
   exit 1
 fi
 HTMLDIR="${HTMLDIR%/}"

@@ -1,0 +1,5 @@
+# Local deployment configuration
+update.conf
+
+# OS metadata
+.DS_Store

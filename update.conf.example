@@ -1,0 +1,5 @@
+# Configuration for update.sh
+# Copy or rename to update.conf in the same directory as update.sh.
+
+# Directory where generated HTML files will be served (required, absolute path)
+HTMLDIR="/path/to/public/html"
