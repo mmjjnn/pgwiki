@@ -2,8 +2,8 @@
 
 How this wiki system works:
 
-Each page is a Markdown file with an .md extension. (There shouldn't be spaces
-in the filename.)
+Each page is a Markdown file with an .md extension. Pages can be in the root
+directory or organized into subdirectories.
 
 Extended [Pandoc Markdown](https://pandoc.org/MANUAL.html#pandocs-markdown) is
 supported, including math between single or double dollar signs,
@@ -32,7 +32,5 @@ all handled by GitHub.
 
 TODOs:
 
-* Currently it's a "flat" wiki: all .md files need to be in the root directory.
-  Should add support for organizing pages into subdirectories.
 * Pandoc Markdown supports citations in a few different ways. Should pick one
   and set up a reasonable workflow for them.

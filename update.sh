@@ -94,22 +94,32 @@ fi
 # (Re)generate any new or updated pages
 mkdir -p "$HTMLDIR/$1"
 declare -A title
-for page in *.md
-do
-  # Extract page title as plain text, falling back to the filename if no title
-  page_title=$(pandoc --template <(printf '%s' '$title$') -t plain -- "$page")
-  title["$page"]="${page_title:-${page%.md}}"
 
-  dest="$HTMLDIR/$1/${page%.md}.html"
-  if [ ! -f "$dest" ] || [ "$page" -nt "$dest" ]
-  then
+while IFS= read -r -d '' page; do
+  relpath="${page#./}"
+
+  # Ignore root index.md as index.html is reserved for the auto-generated ToC
+  if [ "$relpath" = "index.md" ]; then
+    continue
+  fi
+
+  # Extract page title as plain text, falling back to the filename basename if no title
+  bname="${relpath##*/}"
+  page_title=$(pandoc --template <(printf '%s' '$title$') -t plain -- "$page")
+  title["$relpath"]="${page_title:-${bname%.md}}"
+
+  dest="$HTMLDIR/$1/${relpath%.md}.html"
+  dest_dir="${dest%/*}"
+  mkdir -p -- "$dest_dir"
+
+  if [ ! -f "$dest" ] || [ "$page" -nt "$dest" ]; then
     pandoc -f markdown --standalone --mathjax -o "$dest" -- "$page" <(cat <<EOF
 ----
-[View Markdown Source](${WEB_URL}/$GIT_WEB_VIEW/$BRANCH/$page) --- [Edit in Browser](${WEB_URL}/$GIT_WEB_EDIT/$BRANCH/$page)
+[View Markdown Source](${WEB_URL}/$GIT_WEB_VIEW/$BRANCH/$relpath) --- [Edit in Browser](${WEB_URL}/$GIT_WEB_EDIT/$BRANCH/$relpath)
 EOF
     )
   fi
-done
+done < <(find . -name .git -prune -o -name ".*" ! -name . -prune -o -type f -name "*.md" -print0)
 
 # Copy new or updated static assets (including in subdirectories)
 find . -name .git -prune -o -name ".*" ! -name . -prune -o -type f ! -name "*.md" ! -name "*.html" -print0 | while IFS= read -r -d '' file; do
@@ -123,17 +133,17 @@ find . -name .git -prune -o -name ".*" ! -name . -prune -o -type f ! -name "*.md
 done
 
 # Delete any deleted pages
-for path in "$HTMLDIR/$1"/*.html
-do
-  file=${path##*/}
-  if [ "$file" = "index.html" ]; then
-    continue
-  fi
-  if [ -f "$path" ] && [ ! -f "${file%.html}.md" ]
-  then
-    rm -f -- "$path"
-  fi
-done
+if [ -d "$HTMLDIR/$1" ]; then
+  find "$HTMLDIR/$1" -type f -name "*.html" -print0 | while IFS= read -r -d '' dest_file; do
+    relpath="${dest_file#$HTMLDIR/$1/}"
+    if [ "$relpath" = "index.html" ]; then
+      continue
+    fi
+    if [ ! -f "${relpath%.html}.md" ]; then
+      rm -f -- "$dest_file"
+    fi
+  done
+fi
 
 # Delete any deleted static assets and cleanup empty directories
 if [ -d "$HTMLDIR/$1" ]; then
@@ -149,10 +159,38 @@ fi
 # Generate the index
 {
   printf "%% Index\n\n"
-  for page in "${!title[@]}"
-  do
-    echo "* [${title[$page]}](${page%.md}.html)"
-  done
+  prev_dir=""
+  while IFS= read -r page; do
+    [ -n "$page" ] || continue
+    dir="${page%/*}"
+    [ "$dir" = "$page" ] && dir=""
+
+    # If the directory changed, emit any newly entered directory levels
+    if [ "$dir" != "$prev_dir" ]; then
+      IFS='/' read -r -a cur_parts <<< "$dir"
+      IFS='/' read -r -a prev_parts <<< "$prev_dir"
+      [ -z "$dir" ] && cur_parts=()
+      [ -z "$prev_dir" ] && prev_parts=()
+
+      common=0
+      while [ $common -lt ${#cur_parts[@]} ] && [ $common -lt ${#prev_parts[@]} ] && [ "${cur_parts[$common]}" = "${prev_parts[$common]}" ]; do
+        ((common++))
+      done
+
+      for ((i=common; i<${#cur_parts[@]}; i++)); do
+        indent=$(printf "%$((i * 2))s" "")
+        echo "${indent}* ${cur_parts[$i]}/"
+      done
+      prev_dir="$dir"
+    fi
+
+    # Print the page link indented under its directory
+    IFS='/' read -r -a cur_parts <<< "$dir"
+    [ -z "$dir" ] && cur_parts=()
+    indent=$(printf "%$((${#cur_parts[@]} * 2))s" "")
+    echo "${indent}* [${title[$page]}](${page%.md}.html)"
+  done < <(printf '%s\n' "${!title[@]}" | sort -f)
+
   printf "\n----\n[View Markdown sources](%s) --- [Add new page](%s/%s/%s)\n" \
     "${WEB_URL}" "${WEB_URL}" "$GIT_WEB_NEW" "$BRANCH"
 } | pandoc -f markdown --standalone -o "$HTMLDIR/$1/index.html"
