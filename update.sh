@@ -115,7 +115,7 @@ while IFS= read -r -d '' page; do
 
   # Extract page title as plain text, falling back to the filename basename if no title
   bname="${relpath##*/}"
-  page_title=$(pandoc --quiet --template <(printf '%s' '$title$') -t plain -- "$page" 2>/dev/null || true)
+  page_title=$(pandoc --sandbox --quiet --template <(printf '%s' '$title$') -t plain -- "$page" 2>/dev/null || true)
   title["$relpath"]="${page_title:-${bname%.md}}"
 
   dest="$HTMLDIR/$1/${relpath%.md}.html"
@@ -140,7 +140,7 @@ while IFS= read -r -d '' page; do
 <p><a href="${WEB_URL}/$GIT_WEB_VIEW/$BRANCH/$relpath">View Markdown Source</a> &mdash; <a href="${WEB_URL}/$GIT_WEB_EDIT/$BRANCH/$relpath">Edit in Browser</a></p>
 EOF
     )
-    if ! pandoc_err=$(pandoc -f markdown --standalone --mathjax "${bib_args[@]}" \
+    if ! pandoc_err=$(pandoc --sandbox -f markdown --standalone --mathjax "${bib_args[@]}" \
       --include-after-body=<(printf '%s' "$footer") \
       -o "$dest" -- "$page" 2>&1); then
       echo "Error rendering $relpath: $pandoc_err" >&2
@@ -150,7 +150,7 @@ EOF
         printf '# Error rendering page\n\n'
         printf 'Pandoc encountered an error while rendering `%s`:\n\n' "$relpath"
         printf '`````\n%s\n`````\n' "$pandoc_err"
-      } | pandoc -f markdown --standalone \
+      } | pandoc --sandbox -f markdown --standalone \
           --include-after-body=<(printf '%s' "$footer") \
           -o "$dest" 2>/dev/null || {
             cat <<EOF > "$dest"
@@ -242,4 +242,4 @@ fi
 
   printf "\n----\n[View Markdown sources](%s) --- [Add new page](%s/%s/%s)\n" \
     "${WEB_URL}" "${WEB_URL}" "$GIT_WEB_NEW" "$BRANCH"
-} | pandoc -f markdown --standalone -o "$HTMLDIR/$1/index.html"
+} | pandoc --sandbox -f markdown --standalone -o "$HTMLDIR/$1/index.html"
