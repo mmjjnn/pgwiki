@@ -113,11 +113,13 @@ while IFS= read -r -d '' page; do
   mkdir -p -- "$dest_dir"
 
   if [ ! -f "$dest" ] || [ "$page" -nt "$dest" ]; then
-    pandoc -f markdown --standalone --mathjax -o "$dest" -- "$page" <(cat <<EOF
-----
-[View Markdown Source](${WEB_URL}/$GIT_WEB_VIEW/$BRANCH/$relpath) --- [Edit in Browser](${WEB_URL}/$GIT_WEB_EDIT/$BRANCH/$relpath)
+    pandoc -f markdown --standalone --mathjax \
+      --include-after-body=<(cat <<EOF
+<hr>
+<p><a href="${WEB_URL}/$GIT_WEB_VIEW/$BRANCH/$relpath">View Markdown Source</a> &mdash; <a href="${WEB_URL}/$GIT_WEB_EDIT/$BRANCH/$relpath">Edit in Browser</a></p>
 EOF
-    )
+      ) \
+      -o "$dest" -- "$page"
   fi
 done < <(find . -name .git -prune -o -name ".*" ! -name . -prune -o -type f -name "*.md" -print0)
 
