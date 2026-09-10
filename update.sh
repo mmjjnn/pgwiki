@@ -115,7 +115,7 @@ while IFS= read -r -d '' page; do
 
   # Extract page title as plain text, falling back to the filename basename if no title
   bname="${relpath##*/}"
-  page_title=$(pandoc --template <(printf '%s' '$title$') -t plain -- "$page")
+  page_title=$(pandoc --quiet --template <(printf '%s' '$title$') -t plain -- "$page" 2>/dev/null || true)
   title["$relpath"]="${page_title:-${bname%.md}}"
 
   dest="$HTMLDIR/$1/${relpath%.md}.html"
@@ -135,13 +135,38 @@ while IFS= read -r -d '' page; do
   fi
 
   if [ "$rebuild" -eq 1 ]; then
-    pandoc -f markdown --standalone --mathjax "${bib_args[@]}" \
-      --include-after-body=<(cat <<EOF
+    footer=$(cat <<EOF
 <hr>
 <p><a href="${WEB_URL}/$GIT_WEB_VIEW/$BRANCH/$relpath">View Markdown Source</a> &mdash; <a href="${WEB_URL}/$GIT_WEB_EDIT/$BRANCH/$relpath">Edit in Browser</a></p>
 EOF
-      ) \
-      -o "$dest" -- "$page"
+    )
+    if ! pandoc_err=$(pandoc -f markdown --standalone --mathjax "${bib_args[@]}" \
+      --include-after-body=<(printf '%s' "$footer") \
+      -o "$dest" -- "$page" 2>&1); then
+      echo "Error rendering $relpath: $pandoc_err" >&2
+      err_title="${title[$relpath]}"
+      {
+        printf '%% Error: %s\n\n' "$err_title"
+        printf '# Error rendering page\n\n'
+        printf 'Pandoc encountered an error while rendering `%s`:\n\n' "$relpath"
+        printf '`````\n%s\n`````\n' "$pandoc_err"
+      } | pandoc -f markdown --standalone \
+          --include-after-body=<(printf '%s' "$footer") \
+          -o "$dest" 2>/dev/null || {
+            cat <<EOF > "$dest"
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Error: ${err_title}</title></head>
+<body>
+<h1>Error rendering page</h1>
+<p>Pandoc encountered an error while rendering <code>${relpath}</code>:</p>
+<pre><code>${pandoc_err}</code></pre>
+$footer
+</body>
+</html>
+EOF
+          }
+    fi
   fi
 done < <(find . -name .git -prune -o -name ".*" ! -name . -prune -o -type f -name "*.md" -print0)
 
