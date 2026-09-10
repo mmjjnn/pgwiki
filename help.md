@@ -15,6 +15,11 @@ To link to other pages in the wiki, link to the .md file, e.g.
 [index.md](index.md). This will be rewritten to point to .html in the generated
 HTML. FIXME: Not yet implemented!
 
+Citations to BibTeX files are supported (pandoc also supports other
+bibliography formats, but we only implement BibTeX for now). Keys in any `.bib`
+file in the wiki root can be cited from any page on the wiki, using Markdown
+`[@keyname]` style citations.
+
 There are two ways to edit a page:
 
 * Click "edit" on GitHub and edit an .md file in the browser.
@@ -29,8 +34,3 @@ seconds.
 
 This setup means that user authentication, resolving edit conflicts, etc. is
 all handled by GitHub.
-
-TODOs:
-
-* Pandoc Markdown supports citations in a few different ways. Should pick one
-  and set up a reasonable workflow for them.

@@ -95,6 +95,16 @@ fi
 mkdir -p "$HTMLDIR/$1"
 declare -A title
 
+# Discover any .bib files in the wiki root
+bib_args=()
+bib_files=(*.bib)
+if [ ${#bib_files[@]} -gt 0 ]; then
+  bib_args+=(--citeproc --metadata link-citations=true)
+  for bib in "${bib_files[@]}"; do
+    bib_args+=(--bibliography="$PWD/$bib")
+  done
+fi
+
 while IFS= read -r -d '' page; do
   relpath="${page#./}"
 
@@ -112,8 +122,20 @@ while IFS= read -r -d '' page; do
   dest_dir="${dest%/*}"
   mkdir -p -- "$dest_dir"
 
+  rebuild=0
   if [ ! -f "$dest" ] || [ "$page" -nt "$dest" ]; then
-    pandoc -f markdown --standalone --mathjax \
+    rebuild=1
+  else
+    for bib in "${bib_files[@]}"; do
+      if [ "$bib" -nt "$dest" ]; then
+        rebuild=1
+        break
+      fi
+    done
+  fi
+
+  if [ "$rebuild" -eq 1 ]; then
+    pandoc -f markdown --standalone --mathjax "${bib_args[@]}" \
       --include-after-body=<(cat <<EOF
 <hr>
 <p><a href="${WEB_URL}/$GIT_WEB_VIEW/$BRANCH/$relpath">View Markdown Source</a> &mdash; <a href="${WEB_URL}/$GIT_WEB_EDIT/$BRANCH/$relpath">Edit in Browser</a></p>
