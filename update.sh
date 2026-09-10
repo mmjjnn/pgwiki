@@ -74,12 +74,12 @@ GIT_WEB_NEW="new"
 # Clone or sync the repository
 if [ ! -d "$1" ]
 then
-  git clone -- "$2" "$1"
+  git clone --quiet -- "$2" "$1"
   cd "$1"
 else
   cd "$1"
   git remote set-url origin "$2"
-  git fetch --prune origin
+  git fetch --quiet --prune origin
 fi
 
 # Get branch name or default to "main"
@@ -88,7 +88,7 @@ BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "main")
 # Reset to origin to avoid any possibility of merge conflicts
 # (This should be a pull-only clone.)
 if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
-  git reset --hard "origin/$BRANCH"
+  git reset --quiet --hard "origin/$BRANCH"
 fi
 
 # (Re)generate any new or updated pages
@@ -140,7 +140,7 @@ while IFS= read -r -d '' page; do
 <p><a href="${WEB_URL}/$GIT_WEB_VIEW/$BRANCH/$relpath">View Markdown Source</a> &mdash; <a href="${WEB_URL}/$GIT_WEB_EDIT/$BRANCH/$relpath">Edit in Browser</a></p>
 EOF
     )
-    if ! pandoc_err=$(pandoc --sandbox -f markdown --standalone --mathjax "${bib_args[@]}" \
+    if ! pandoc_err=$(pandoc --sandbox --quiet -f markdown --standalone --mathjax "${bib_args[@]}" \
       --include-after-body=<(printf '%s' "$footer") \
       -o "$dest" -- "$page" 2>&1); then
       echo "Error rendering $relpath: $pandoc_err" >&2
@@ -150,7 +150,7 @@ EOF
         printf '# Error rendering page\n\n'
         printf 'Pandoc encountered an error while rendering `%s`:\n\n' "$relpath"
         printf '`````\n%s\n`````\n' "$pandoc_err"
-      } | pandoc --sandbox -f markdown --standalone \
+      } | pandoc --sandbox --quiet -f markdown --standalone \
           --include-after-body=<(printf '%s' "$footer") \
           -o "$dest" 2>/dev/null || {
             cat <<EOF > "$dest"
@@ -242,4 +242,4 @@ fi
 
   printf "\n----\n[View Markdown sources](%s) --- [Add new page](%s/%s/%s)\n" \
     "${WEB_URL}" "${WEB_URL}" "$GIT_WEB_NEW" "$BRANCH"
-} | pandoc --sandbox -f markdown --standalone -o "$HTMLDIR/$1/index.html"
+} | pandoc --sandbox --quiet -f markdown --standalone -o "$HTMLDIR/$1/index.html"
