@@ -24,6 +24,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF_FILE="$SCRIPT_DIR/update.conf"
+SCRIPT_FILE="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
 
 if [ ! -f "$CONF_FILE" ]; then
   echo "Error: Configuration file '$CONF_FILE' not found." >&2
@@ -123,7 +124,7 @@ while IFS= read -r -d '' page; do
   mkdir -p -- "$dest_dir"
 
   rebuild=0
-  if [ ! -f "$dest" ] || [ "$page" -nt "$dest" ]; then
+  if [ ! -f "$dest" ] || [ "$page" -nt "$dest" ] || [ "$SCRIPT_FILE" -nt "$dest" ]; then
     rebuild=1
   else
     for bib in "${bib_files[@]}"; do
