@@ -135,9 +135,20 @@ while IFS= read -r -d '' page; do
   fi
 
   if [ "$rebuild" -eq 1 ]; then
+    # Get relative path to the wiki root
+    dir="${relpath%/*}"
+    root_index="./"
+    if [ "$dir" != "$relpath" ]; then
+      root_index=""
+      IFS='/' read -r -a dir_parts <<< "$dir"
+      for _ in "${dir_parts[@]}"; do
+        root_index="../$root_index"
+      done
+    fi
+
     footer=$(cat <<EOF
 <hr>
-<p><a href="${WEB_URL}/$GIT_WEB_VIEW/$BRANCH/$relpath">View Markdown Source</a> &mdash; <a href="${WEB_URL}/$GIT_WEB_EDIT/$BRANCH/$relpath">Edit in Browser</a></p>
+<p><a href="$root_index">Index</a> &mdash; <a href="${WEB_URL}/$GIT_WEB_VIEW/$BRANCH/$relpath">View Markdown Source</a> &mdash; <a href="${WEB_URL}/$GIT_WEB_EDIT/$BRANCH/$relpath">Edit in Browser</a></p>
 EOF
     )
     if ! pandoc_err=$(pandoc --sandbox --quiet -f markdown --standalone --mathjax "${bib_args[@]}" \
